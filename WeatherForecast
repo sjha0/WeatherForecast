@@ -1,0 +1,69 @@
+import streamlit as st
+import requests
+import plotly.graph_objects as go
+
+# Weather API Config
+API_KEY = 'ce2a5f295cbe476a9f4102909251204'
+BASE_URL = "http://api.weatherapi.com/v1"
+
+# Sidebar input
+st.sidebar.header("Weather Options")
+city = st.sidebar.text_input("Enter city", "Panchkula")
+theme = st.sidebar.radio("Select Theme", ("Light", "Dark"))
+
+# Apply basic theme
+if theme == "Dark":
+    st.markdown(
+        "<style>body {background-color: #1e1e1e; color: white;} div.stTextInput>div>input {color: white;}</style>",
+        unsafe_allow_html=True
+    )
+
+st.title("🌦️ Weather Forecast App")
+st.subheader(f"Showing weather for: {city}")
+
+# Get current weather
+url = f"{BASE_URL}/current.json?key={API_KEY}&q={city}"
+response = requests.get(url)
+
+if response.status_code == 200:
+    data = response.json()
+    current = data.get("current", {})
+    
+    # Unit selection
+    unit = st.radio("Choose temperature unit", ("Celsius", "Fahrenheit"))
+
+    temp_c = current.get("temp_c", 0)
+    temp = temp_c if unit == "Celsius" else (temp_c * 9/5) + 32
+    temp_unit = "°C" if unit == "Celsius" else "°F"
+
+    st.write(f"🌡️ Temperature: {temp:.1f}{temp_unit}")
+    st.write(f"🌤️ Condition: {current['condition']['text']}")
+    st.write(f"💧 Humidity: {current['humidity']}%")
+    st.image(f"http:{current['condition']['icon']}", width=50)
+
+    # Forecast section
+    forecast_url = f"{BASE_URL}/forecast.json?key={API_KEY}&q={city}&days=7"
+    forecast_response = requests.get(forecast_url)
+
+    if forecast_response.status_code == 200:
+        forecast_data = forecast_response.json()
+        days = forecast_data['forecast']['forecastday']
+
+        st.subheader("📆 7-Day Forecast")
+
+        dates = [day['date'] for day in days]
+        avg_temps = [day['day']['avgtemp_c'] if unit == "Celsius" else (day['day']['avgtemp_c'] * 9/5) + 32 for day in days]
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=dates, y=avg_temps, mode='lines+markers', name='Avg Temp'))
+        fig.update_layout(title='7-Day Temperature Forecast', xaxis_title='Date', yaxis_title=f'Temperature ({temp_unit})')
+        st.plotly_chart(fig)
+
+else:
+    st.error("❌ City not found. Please enter a valid city name.")
+
+
+
+
+
+
